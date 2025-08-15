@@ -1,27 +1,43 @@
 package com.savemystudies.backend.model;
+
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDateTime;
 import java.util.List;
+
 @Entity
-@Table(name = "users")
-@Getter @Setter
+@Table(name = "usuario")
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class User{
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String nome;
 
-    @Column(unique = true)
+    @Column(unique = true, nullable = false)
     private String email;
 
-    private String senha;
+    @Column(name = "senha_hash", nullable = false)
+    private String senhaHash;
+
+    @Column(name = "data_criacao")
+    private LocalDateTime dataCriacao = LocalDateTime.now();
 
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
-    private List<Disciplina> disciplinas;
+    private List<MetaEstudo> metas;
 
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
+    private List<ResumoGerado> resumos;
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
+    private List<ExercicioGerado> exercicios;
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
+    private List<ProgressoEstudo> progresso;
 }
-
