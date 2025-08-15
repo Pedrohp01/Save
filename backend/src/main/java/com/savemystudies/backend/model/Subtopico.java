@@ -17,8 +17,8 @@ public class Subtopico {
     private String nome;
 
     @ManyToOne
-    @JoinColumn(name = "materia_id", nullable = false)
-    private Materia materia;
+    @JoinColumn(name = "topico_id", nullable = false)
+    private Topico topico;
 
     @OneToMany(mappedBy = "subtopico", cascade = CascadeType.ALL)
     private List<Tema> temas;

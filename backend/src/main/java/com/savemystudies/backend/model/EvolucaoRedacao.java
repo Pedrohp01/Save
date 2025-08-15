@@ -15,7 +15,7 @@ public class EvolucaoRedacao {
     @JoinColumn(name = "redacao_id", nullable = false)
     private Redacao redacao;
 
-
+ // maybe, make a list of  "Redacão", some idea on my head :)
 
     @Lob
     private String textoCorrigido;

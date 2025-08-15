@@ -23,6 +23,9 @@ public class Topico {
     private Materia materia;
 
     @OneToMany(mappedBy = "topico", cascade = CascadeType.ALL)
+    private List<Subtopico> subtopicos;
+
+    @OneToMany(mappedBy = "topico", cascade = CascadeType.ALL)
     private List<ResumoGerado> resumos;
 }
 
