@@ -1,13 +1,16 @@
 package com.savemystudies.backend.model;
+
 import jakarta.persistence.*;
-import lombok.*;
-import java.util.*;;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 @Entity
-@Table(name = "subtopico")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Subtopico {
 
     @Id
@@ -16,10 +19,7 @@ public class Subtopico {
 
     private String nome;
 
-    @ManyToOne
-    @JoinColumn(name = "topico_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "topico_id")
     private Topico topico;
-
-    @OneToMany(mappedBy = "subtopico", cascade = CascadeType.ALL)
-    private List<Tema> temas;
 }

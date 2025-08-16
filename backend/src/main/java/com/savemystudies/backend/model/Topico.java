@@ -1,15 +1,19 @@
 package com.savemystudies.backend.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 
 @Entity
-@Table(name = "topico")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Topico {
 
     @Id
@@ -18,14 +22,11 @@ public class Topico {
 
     private String nome;
 
-    @ManyToOne
-    @JoinColumn(name = "materia_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "materia_id")
     private Materia materia;
 
-    @OneToMany(mappedBy = "topico", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "topico")
+    @JsonIgnore
     private List<Subtopico> subtopicos;
-
-    @OneToMany(mappedBy = "topico", cascade = CascadeType.ALL)
-    private List<ResumoGerado> resumos;
 }
-

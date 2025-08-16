@@ -1,17 +1,20 @@
 package com.savemystudies.backend.model;
 
-import jakarta.persistence.Entity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "area")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Area {
 
     @Id
@@ -20,6 +23,7 @@ public class Area {
 
     private String nome;
 
-    @OneToMany(mappedBy = "area", cascade = CascadeType.ALL)
-    private List<Materia> materias;
+    @OneToMany(mappedBy = "area")
+    @JsonIgnore
+    private List<Materia> materias = new ArrayList<>();
 }
