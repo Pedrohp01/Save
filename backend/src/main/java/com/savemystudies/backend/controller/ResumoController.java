@@ -1,38 +1,64 @@
 package com.savemystudies.backend.controller;
 
-import com.savemystudies.backend.model.Subtopico; // Importação correta
-import com.savemystudies.backend.repository.SubtopicoRepository; // Repositório correto
+import com.savemystudies.backend.model.Subtopico;
+import com.savemystudies.backend.repository.SubtopicoRepository;
 import com.savemystudies.backend.service.GeminiService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/resumo")
 public class ResumoController {
 
-    @Autowired
-    private SubtopicoRepository subtopicoRepository; // Injetando o repositório correto
+    private final SubtopicoRepository subtopicoRepository;
+    private final GeminiService geminiService;
 
-    @Autowired
-    private GeminiService geminiService;
+    public ResumoController(SubtopicoRepository subtopicoRepository, GeminiService geminiService) {
+        this.subtopicoRepository = subtopicoRepository;
+        this.geminiService = geminiService;
+    }
 
-    @GetMapping
-    public Mono<ResponseEntity<String>> generateResumo(@RequestParam Long subtopicoId) {
-        Optional<Subtopico> optionalSubtopico = subtopicoRepository.findById(subtopicoId);
+    /**
+     * Gera resumo de um sub-tópico específico
+     * Exemplo: GET /api/resumo/15
+     */
+    @GetMapping("/{subtopicoId}")
+    public Mono<ResponseEntity<String>> generateResumo(@PathVariable Long subtopicoId) {
+        return Mono.justOrEmpty(subtopicoRepository.findById(subtopicoId))
+                .flatMap(subtopico -> {
+                    String area = subtopico.getTopico().getMateria().getArea().getNome();
+                    String materia = subtopico.getTopico().getMateria().getNome();
+                    String topico = subtopico.getTopico().getNome();
 
-        if (optionalSubtopico.isEmpty()) {
-            return Mono.just(ResponseEntity.notFound().build());
-        }
+                    return geminiService.gerarResumo(area, materia, topico)
+                            .map(ResponseEntity::ok);
+                })
+                .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
 
-        String subtopicoNome = optionalSubtopico.get().getNome();
-        String prompt = "Gere um resumo detalhado e claro sobre o seguinte tema para fins de estudo: " + subtopicoNome;
+    /**
+     * Gera resumo completo passando toda a hierarquia: Área -> Matéria -> Tópico -> SubTópico
+     * Exemplo: GET /api/resumo/completo/1/3/7/15
+     */
+    @GetMapping("/completo/{areaId}/{materiaId}/{topicoId}/{subtopicoId}")
+    public Mono<ResponseEntity<String>> generateResumoCompleto(
+            @PathVariable Long areaId,
+            @PathVariable Long materiaId,
+            @PathVariable Long topicoId,
+            @PathVariable Long subtopicoId) {
 
-        return geminiService.gerarResposta(prompt)
-                .map(ResponseEntity::ok)
+        return Mono.justOrEmpty(subtopicoRepository.findById(subtopicoId))
+                .flatMap(subtopico -> {
+                    // Aqui você pode adicionar validações extras se quiser garantir
+                    // que o SubTópico pertence ao Tópico -> Matéria -> Área
+                    String area = subtopico.getTopico().getMateria().getArea().getNome();
+                    String materia = subtopico.getTopico().getMateria().getNome();
+                    String topico = subtopico.getTopico().getNome();
+
+                    return geminiService.gerarResumo(area, materia, topico)
+                            .map(ResponseEntity::ok);
+                })
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 }

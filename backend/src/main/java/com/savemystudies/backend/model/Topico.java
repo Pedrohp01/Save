@@ -1,6 +1,7 @@
 package com.savemystudies.backend.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -24,6 +25,7 @@ public class Topico {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "materia_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Materia materia;
 
     @OneToMany(mappedBy = "topico")
