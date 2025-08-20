@@ -1,194 +1,105 @@
 package com.savemystudies.backend.service;
 
-
-
 import com.fasterxml.jackson.databind.JsonNode;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.springframework.beans.factory.annotation.Value;
-
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-
-import org.springframework.web.reactive.function.client.WebClient;
-
-import reactor.core.publisher.Mono;
-
-
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.util.List;
-
 import java.util.Map;
 
-
-
 @Service
-
 public class GeminiService {
 
-
-
-    private final WebClient webClient;
-
+    private final RestClient rest;
     private final ObjectMapper objectMapper;
-
-    private final String geminiApiKey;
-
-
+    private final String apiKey;
+    private final String model;
 
     public GeminiService(
-
-            WebClient.Builder webClientBuilder,
-
             ObjectMapper objectMapper,
-
-            @Value("${gemini.api.base-url}") String geminiApiBaseUrl,
-
-            @Value("${gemini.api.key}") String geminiApiKey) {
-
-
-
-// Injeta a URL base do application.properties para maior flexibilidade
-
-        this.webClient = webClientBuilder.baseUrl(geminiApiBaseUrl).build();
-
+            @Value("${gemini.api.base-url:https://generativelanguage.googleapis.com/v1beta}") String baseUrl,
+            @Value("${gemini.api.key}") String apiKey,
+            @Value("${gemini.api.model:gemini-1.5-flash}") String model
+    ) {
+        this.rest = RestClient.builder().baseUrl(baseUrl).build();
         this.objectMapper = objectMapper;
-
-        this.geminiApiKey = geminiApiKey;
-
+        this.apiKey = apiKey;
+        this.model = model;
     }
 
-
-
-    public Mono<String> gerarResposta(String prompt) {
-
-        System.err.println("Prompt a ser enviado: " + prompt); // 👈 Adicione esta linha
-        Map<String, Object> requestBody = Map.of(
-
-                "contents", List.of(
-
-                        Map.of(
-
-                                "parts", List.of(
-
-                                        Map.of("text", prompt)
-
-                                )
-
-                        )
-
-                )
-
+    public String gerarResumo(String area, String materia, String topico, String subtopico) {
+        // A formatação do prompt agora está correta, usando a concatenação de strings.
+        String prompt = String.format(
+                "Formate a resposta da seguinte maneira:\n\n" +
+                        "Crie um resumo claro e objetivo para vestibulandos sobre o subtema '%s'.\n" +
+                        "O resumo deve estar dentro do contexto mais amplo de '%s', que está inserido na matéria '%s' e na área de conhecimento '%s'.\n\n" +
+                        "O resumo deve conter informações relevantes e ser de fácil compreensão, focado para vestibular.\n\n" +
+                        "Organize o resumo com títulos bem definidos, por exemplo:\n\n" +
+                        "Título do tema\n" +
+                        "Texto do resumo, de forma clara e concisa.\n\n" +
+                        "Ao fim, coloque 'como tal assunto é cobrado nos vestibulares'.\n\n" +
+                        "Não coloque 'dicas ou algo do tipo', apenas o resumo.\n",
+                subtopico, topico, materia, area
         );
-
-
-
-        return webClient.post()
-
-                .uri(uriBuilder -> uriBuilder
-
-                        .path("/models/gemini-1.0-pro:generateContent")
-
-                        .queryParam("key", geminiApiKey)
-
-                        .build())
-
-                .header("Content-Type", "application/json")
-
-                .bodyValue(requestBody) // O WebClient serializa o Map para JSON
-
-                .retrieve()
-
-                .bodyToMono(String.class)
-
-                .map(this::extrairTextoDaResposta)
-
-                .onErrorResume(e -> {
-
-// Retorna a mensagem de erro específica da exceção
-
-                    System.err.println("Erro ao chamar a API do Gemini: " + e.getMessage());
-
-                    return Mono.just("Erro: Não foi possível gerar o conteúdo.");
-
-                });
-
+        return gerarResposta(prompt);
     }
 
+    // --------- infraestrutura ----------
+    private String gerarResposta(String prompt) {
+        System.out.println("Prompt enviado: " + prompt);
 
-
-    private String extrairTextoDaResposta(String resposta) {
+        Map<String, Object> body = Map.of(
+                "contents", List.of(
+                        Map.of(
+                                // 'role' é opcional, mas ajuda a manter compatibilidade
+                                "role", "user",
+                                "parts", List.of(Map.of("text", prompt))
+                        )
+                )
+        );
 
         try {
+            String raw = rest.post()
+                    .uri("/models/{model}:generateContent?key={key}", model, apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(String.class);
 
-            JsonNode root = objectMapper.readTree(resposta);
+            return extrairTexto(raw);
 
-// Navega pela estrutura da resposta JSON
-
-            JsonNode textNode = root.path("candidates").get(0).path("content").path("parts").get(0).path("text");
-
-            return textNode.asText();
-
-        } catch (Exception e) {
-
-            System.err.println("Erro ao extrair texto da resposta do Gemini: " + e.getMessage());
-
-// Retorna um erro mais genérico para o usuário
-
-            return "Erro ao processar a resposta da API.";
-
+        } catch (RestClientException e) {
+            System.err.println("Erro ao chamar Gemini: " + e.getMessage());
+            // Retorna uma mensagem de erro mais descritiva para o front-end ou log
+            return "Erro: Não foi possível gerar o conteúdo. Verifique sua conexão ou a API do Gemini.";
         }
-
     }
 
+    private String extrairTexto(String raw) {
+        try {
+            JsonNode root = objectMapper.readTree(raw);
 
+            // Trata resposta de erro vinda da API
+            if (root.has("error")) {
+                String msg = root.path("error").path("message").asText("Erro desconhecido da API.");
+                return "Erro da API Gemini: " + msg;
+            }
 
-// 🔹 Métodos especializados (não mudam, estão perfeitos)
-
-    public Mono<String> gerarResumo(String area, String materia, String topico) {
-
-        String prompt = String.format(
-
-                "Gere um resumo didático e objetivo sobre o tópico '%s' da matéria '%s' da área '%s', no estilo de preparação para o ENEM.",
-
-                topico, materia, area
-
-        );
-
-        return gerarResposta(prompt);
-
+            return root.path("candidates")
+                    .path(0)
+                    .path("content")
+                    .path("parts")
+                    .path(0)
+                    .path("text")
+                    .asText("Erro: resposta inesperada do Gemini.");
+        } catch (Exception e) {
+            System.err.println("Erro ao processar resposta do Gemini: " + e.getMessage());
+            return "Erro ao processar a resposta da API.";
+        }
     }
-
-
-
-    public Mono<String> gerarQuestao(String area, String materia, String topico) {
-
-        String prompt = String.format(
-
-                "Crie uma questão no estilo ENEM sobre o tópico '%s' da matéria '%s' da área '%s', com alternativas e a resposta correta.",
-
-                topico, materia, area
-
-        );
-
-        return gerarResposta(prompt);
-
-    }
-
-
-
-    public Mono<String> gerarExplicacao(String area, String materia, String topico) {
-
-        String prompt = String.format(
-
-                "Explique de forma passo a passo o tópico '%s' da matéria '%s' da área '%s', como se fosse para um aluno do ensino médio.",
-
-                topico, materia, area
-
-        );
-
-        return gerarResposta(prompt);
-
-    }
-
 }
