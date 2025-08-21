@@ -31,8 +31,36 @@ public class GeminiService {
         this.model = model;
     }
 
+    // ---------- gerar exercícios ----------
+    public String gerarExercicio(String area, String materia, String topico, String subtopico) {
+        String promptTemplate =  "Gere exatamente 5 questões de múltipla escolha no nível ENEM, " +
+                "sobre o conteúdo informado, SEM usar imagens, gráficos ou fórmulas em LaTeX.\n\n" +
+                "⚠️ Regras obrigatórias:\n" +
+                "- Cada questão deve ter apenas 1 alternativa correta.\n" +
+                "- Todas as alternativas devem ser plausíveis (não invente opções absurdas).\n" +
+                "- Use linguagem clara, como em questões reais de vestibular.\n" +
+                "- Mantenha o formato estritamente igual ao modelo abaixo, mas **não inclua a resposta correta no front**:\n\n" +
+                "QUESTAO_1:\n" +
+                "Enunciado da questão\n" +
+                "A) Alternativa A\n" +
+                "B) Alternativa B\n" +
+                "C) Alternativa C\n" +
+                "D) Alternativa D\n" +
+                "E) Alternativa E\n\n" +
+                "Repita para as 5 questões.\n\n" +
+                "📚 Contexto:\n" +
+                "Área: %s\n" +
+                "Matéria: %s\n" +
+                "Tópico: %s\n" +
+                "Subtópico: %s";
+
+        String promptEx = String.format(promptTemplate, area, materia, topico, subtopico);
+
+        return gerarResposta(promptEx);
+    }
+
+    // ---------- gerar resumos ----------
     public String gerarResumo(String area, String materia, String topico, String subtopico) {
-        // A formatação do prompt agora está correta, usando a concatenação de strings.
         String prompt = String.format(
                 "Formate a resposta da seguinte maneira:\n\n" +
                         "Crie um resumo claro e objetivo para vestibulandos sobre o subtema '%s'.\n" +
@@ -40,22 +68,20 @@ public class GeminiService {
                         "O resumo deve conter informações relevantes e ser de fácil compreensão, focado para vestibular.\n\n" +
                         "Organize o resumo com títulos bem definidos, por exemplo:\n\n" +
                         "Título do tema\n" +
-                        "Texto do resumo, de forma clara e concisa.\n\n" +
-                        "Ao fim, coloque 'como tal assunto é cobrado nos vestibulares'.\n\n" +
-                        "Não coloque 'dicas ou algo do tipo', apenas o resumo.\n",
+                        "Texto do resumo.\n\n" +
+                        "Ao fim, coloque 'como tal assunto é cobrado nos vestibulares'.",
                 subtopico, topico, materia, area
         );
         return gerarResposta(prompt);
     }
 
-    // --------- infraestrutura ----------
+    // ---------- infraestrutura ----------
     private String gerarResposta(String prompt) {
         System.out.println("Prompt enviado: " + prompt);
 
         Map<String, Object> body = Map.of(
                 "contents", List.of(
                         Map.of(
-                                // 'role' é opcional, mas ajuda a manter compatibilidade
                                 "role", "user",
                                 "parts", List.of(Map.of("text", prompt))
                         )
@@ -75,7 +101,6 @@ public class GeminiService {
 
         } catch (RestClientException e) {
             System.err.println("Erro ao chamar Gemini: " + e.getMessage());
-            // Retorna uma mensagem de erro mais descritiva para o front-end ou log
             return "Erro: Não foi possível gerar o conteúdo. Verifique sua conexão ou a API do Gemini.";
         }
     }
@@ -84,7 +109,6 @@ public class GeminiService {
         try {
             JsonNode root = objectMapper.readTree(raw);
 
-            // Trata resposta de erro vinda da API
             if (root.has("error")) {
                 String msg = root.path("error").path("message").asText("Erro desconhecido da API.");
                 return "Erro da API Gemini: " + msg;
