@@ -74,6 +74,31 @@ public class GeminiService {
         );
         return gerarResposta(prompt);
     }
+    public String gerarCronograma(String vestibular, double vezesPorSemana, double horasPorDia) {
+        String prompt = String.format(
+                "Monte um cronograma de estudos personalizado e completo para o vestibular: %s.\n\n" +
+                        "Regras:\n" +
+                        "- O usuário estuda %.0f vezes por semana.\n" +
+                        "- Cada sessão de estudo tem aproximadamente %.1f horas.\n" +
+                        "- O cronograma deve cobrir todas as áreas exigidas nesse vestibular.\n" +
+                        "- Organize os estudos de forma progressiva: do básico ao avançado.\n" +
+                        "- Divida por áreas, matérias e tópicos.\n" +
+                        "- Inclua revisões periódicas e simulados.\n" +
+                        "- Seja específico: indique exatamente quais conteúdos o estudante deve revisar em cada etapa.\n\n" +
+                        "Formato esperado da resposta:\n" +
+                        "SEMANA X:\n" +
+                        "  • Dia da semana\n" +
+                        "     - Área: ...\n" +
+                        "     - Disciplina: ...\n" +
+                        "     - Tópicos a estudar: ...\n" +
+                        "     - Tempo estimado: ...\n\n" +
+                        "Finalize com um resumo semanal destacando revisões, simulados e avanços alcançados.",
+                vestibular, vezesPorSemana, horasPorDia
+        );
+
+        return prompt;
+    }
+
 
     // ---------- infraestrutura ----------
     private String gerarResposta(String prompt) {
@@ -126,4 +151,6 @@ public class GeminiService {
             return "Erro ao processar a resposta da API.";
         }
     }
+
+    
 }
