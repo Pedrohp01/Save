@@ -1,33 +1,32 @@
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+### Diretórios de compilação e dependências ###
+# Maven
+/target/
+# Gradle
+/build/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
+### Arquivos e diretórios de IDEs ###
+# IntelliJ IDEA
+.idea/
 *.iml
+*.iws
 *.ipr
-
-### NetBeans ###
+# Eclipse
+.classpath
+.project
+.settings/
+# VS Code
+.vscode/
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
 
-### VS Code ###
-.vscode/
+### Arquivos gerados automaticamente ###
+# Logs
+*.log
+# Arquivos de configurações de ambiente
+# (Exemplo: para não versionar dados sensíveis)
+!application.properties.example
+application.properties
