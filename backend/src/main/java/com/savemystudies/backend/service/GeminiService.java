@@ -2,15 +2,22 @@ package com.savemystudies.backend.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.savemystudies.backend.dto.RedacaoFeedback;
+import com.savemystudies.backend.model.Cronograma;
+import com.savemystudies.backend.model.CronogramaDia;
+import com.savemystudies.backend.repository.CronogramaDiaRepository;
+import com.savemystudies.backend.repository.CronogramaRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.*;
 
+@Slf4j
 @Service
 public class GeminiService {
 
@@ -18,99 +25,174 @@ public class GeminiService {
     private final ObjectMapper objectMapper;
     private final String apiKey;
     private final String model;
+    private final CronogramaRepository cronogramaRepository;
+    private final CronogramaDiaRepository cronogramaDiaRepository;
 
     public GeminiService(
             ObjectMapper objectMapper,
             @Value("${gemini.api.base-url:https://generativelanguage.googleapis.com/v1beta}") String baseUrl,
             @Value("${gemini.api.key}") String apiKey,
-            @Value("${gemini.api.model:gemini-1.5-flash}") String model
+            @Value("${gemini.api.model:gemini-1.5-flash}") String model,
+            CronogramaRepository cronogramaRepository,
+            CronogramaDiaRepository cronogramaDiaRepository
     ) {
         this.rest = RestClient.builder().baseUrl(baseUrl).build();
         this.objectMapper = objectMapper;
         this.apiKey = apiKey;
         this.model = model;
+        this.cronogramaRepository = cronogramaRepository;
+        this.cronogramaDiaRepository = cronogramaDiaRepository;
     }
 
     // ---------- gerar exercícios ----------
+    private static final String EXERCICIO_PROMPT = """
+Gere exatamente 5 questões de múltipla escolha no nível ENEM
+sobre o conteúdo informado, SEM usar imagens, gráficos ou fórmulas em LaTeX.
+
+⚠️ Regras obrigatórias:
+- Cada questão deve ter apenas 1 alternativa correta.
+- Todas as alternativas devem ser plausíveis.
+- Use linguagem clara, como em questões reais de vestibular.
+- Formato esperado:
+
+QUESTAO_1:
+Enunciado da questão
+A) Alternativa A
+B) Alternativa B
+C) Alternativa C
+D) Alternativa D
+E) Alternativa E
+Resposta correta: [letra]
+Explicação: [texto explicando o motivo da resposta]
+
+Repita para as 5 questões.
+
+📚 Contexto:
+Área: %s
+Matéria: %s
+Tópico: %s
+Subtópico: %s
+""";
+
+
     public String gerarExercicio(String area, String materia, String topico, String subtopico) {
-        String promptTemplate =  "Gere exatamente 5 questões de múltipla escolha no nível ENEM, " +
-                "sobre o conteúdo informado, SEM usar imagens, gráficos ou fórmulas em LaTeX.\n\n" +
-                "⚠️ Regras obrigatórias:\n" +
-                "- Cada questão deve ter apenas 1 alternativa correta.\n" +
-                "- Todas as alternativas devem ser plausíveis (não invente opções absurdas).\n" +
-                "- Use linguagem clara, como em questões reais de vestibular.\n" +
-                "- Mantenha o formato estritamente igual ao modelo abaixo, mas **não inclua a resposta correta no front**:\n\n" +
-                "QUESTAO_1:\n" +
-                "Enunciado da questão\n" +
-                "A) Alternativa A\n" +
-                "B) Alternativa B\n" +
-                "C) Alternativa C\n" +
-                "D) Alternativa D\n" +
-                "E) Alternativa E\n\n" +
-                "Repita para as 5 questões.\n\n" +
-                "📚 Contexto:\n" +
-                "Área: %s\n" +
-                "Matéria: %s\n" +
-                "Tópico: %s\n" +
-                "Subtópico: %s";
-
-        String promptEx = String.format(promptTemplate, area, materia, topico, subtopico);
-
-        return gerarResposta(promptEx);
+        String prompt = String.format(EXERCICIO_PROMPT, area, materia, topico, subtopico);
+        return gerarResposta(prompt);
     }
+
 
     // ---------- gerar resumos ----------
     public String gerarResumo(String area, String materia, String topico, String subtopico) {
-        String prompt = String.format(
-                "Formate a resposta da seguinte maneira:\n\n" +
-                        "Crie um resumo claro e objetivo para vestibulandos sobre o subtema '%s'.\n" +
-                        "O resumo deve estar dentro do contexto mais amplo de '%s', que está inserido na matéria '%s' e na área de conhecimento '%s'.\n\n" +
-                        "O resumo deve conter informações relevantes e ser de fácil compreensão, focado para vestibular.\n\n" +
-                        "Organize o resumo com títulos bem definidos, por exemplo:\n\n" +
-                        "Título do tema\n" +
-                        "Texto do resumo.\n\n" +
-                        "Ao fim, coloque 'como tal assunto é cobrado nos vestibulares'.",
-                subtopico, topico, materia, area
-        );
+        String prompt = String.format("""
+                Crie um resumo claro e objetivo para vestibulandos sobre o subtema '%s'.
+                O resumo deve estar dentro do contexto de '%s', na matéria '%s', área '%s'.
+
+                Organize o resumo com títulos bem definidos e finalize com:
+                "como tal assunto é cobrado nos vestibulares".
+                """, subtopico, topico, materia, area);
         return gerarResposta(prompt);
     }
-    public String gerarCronograma(String vestibular, double vezesPorSemana, double horasPorDia) {
-        String prompt = String.format(
-                "Monte um cronograma de estudos personalizado e completo para o vestibular: %s.\n\n" +
-                        "Regras:\n" +
-                        "- O usuário estuda %.0f vezes por semana.\n" +
-                        "- Cada sessão de estudo tem aproximadamente %.1f horas.\n" +
-                        "- O cronograma deve cobrir todas as áreas exigidas nesse vestibular.\n" +
-                        "- Organize os estudos de forma progressiva: do básico ao avançado.\n" +
-                        "- Divida por áreas, matérias e tópicos.\n" +
-                        "- Inclua revisões periódicas e simulados.\n" +
-                        "- Seja específico: indique exatamente quais conteúdos o estudante deve revisar em cada etapa.\n\n" +
-                        "Formato esperado da resposta:\n" +
-                        "SEMANA X:\n" +
-                        "  • Dia da semana\n" +
-                        "     - Área: ...\n" +
-                        "     - Disciplina: ...\n" +
-                        "     - Tópicos a estudar: ...\n" +
-                        "     - Tempo estimado: ...\n\n" +
-                        "Finalize com um resumo semanal destacando revisões, simulados e avanços alcançados.",
-                vestibular, vezesPorSemana, horasPorDia
-        );
 
-        return prompt;
+    // ---------- gerar cronograma ----------
+    public Cronograma gerarCronograma(Cronograma cronograma) {
+        double horasPorDia = cronograma.getMinutospordia() / 60.0;
+
+        String prompt = String.format("""
+                Monte um cronograma de estudos para o vestibular: %s.
+
+                O cronograma deve iniciar em %s e terminar no dia anterior ao vestibular (%s).
+                Regras:
+                - Dias de estudo: %s.
+                - Cada sessão: %.1f horas.
+                - Progressão: básico ao avançado.
+                - Inclua revisões, simulados e planejamento final.
+                """,
+                cronograma.getVestibular(),
+                cronograma.getDataInicio(),
+                cronograma.getDataFim(),
+                cronograma.getDiasDaSemana(),
+                horasPorDia);
+
+        String resposta = gerarResposta(prompt);
+        cronograma.setTextoGerado(resposta);
+        Cronograma salvo = cronogramaRepository.save(cronograma);
+
+        // gerar dias
+        LocalDate data = cronograma.getDataInicio();
+        while (!data.isAfter(cronograma.getDataFim())) {
+            if (cronograma.getDiasDaSemana().contains(data.getDayOfWeek())) {
+                CronogramaDia dia = new CronogramaDia();
+                dia.setCronograma(salvo);
+                dia.setData(data);
+                dia.setDescricao("Estudo no dia " + data);
+                dia.setConcluido(false);
+                cronogramaDiaRepository.save(dia);
+            }
+            data = data.plusDays(1);
+        }
+        return salvo;
     }
 
+    // ---------- redação ----------
+    public RedacaoFeedback analisarRedacao(String texto, String vestibular, String tema) {
+        String prompt = String.format("""
+            Analise a redação sobre o tema "%s" (%s).
+            - Avalie pontos fortes e fracos.
+            - Nota de 0 a 1000.
+            - Feedback por competência.
+            - Sugestões práticas de melhoria.
+
+            Texto: "%s"
+
+                "Retorne JSON: {\\"feedback\\": \\"...\\", \\"nota\\": 0.0}"
+            """, tema, vestibular, texto);
+
+        try {
+            String respostaBruta = gerarResposta(prompt);
+            // Remove markdown tags from the response
+            String jsonPuro = respostaBruta.replaceAll("```json", "").replaceAll("```", "").trim();
+
+            // Add a log to see the clean JSON string
+            System.out.println("JSON limpo para parsing: " + jsonPuro);
+
+            return objectMapper.readValue(jsonPuro, RedacaoFeedback.class);
+
+        } catch (Exception e) {
+            log.error("Erro ao processar redação", e);
+            // This is where the null and 0.0 values are coming from
+            return new RedacaoFeedback(null, 0.0);
+        }
+    }
+    public List<String> gerarTemasRedacao() {
+        String prompt = """
+                Gere 1 tema de redação no modelo ENEM, sobre atualidades.
+                Retorne JSON: {"temas": ["tema aqui"]}
+                """;
+
+        try {
+            JsonNode root = objectMapper.readTree(gerarResposta(prompt));
+            JsonNode temasNode = root.path("temas");
+
+            if (temasNode.isArray()) {
+                List<String> temas = new ArrayList<>();
+                temasNode.forEach(t -> temas.add(t.asText()));
+                return temas;
+            }
+        } catch (Exception e) {
+            log.error("Erro ao processar temas de redação", e);
+        }
+        return Collections.emptyList();
+    }
 
     // ---------- infraestrutura ----------
     private String gerarResposta(String prompt) {
-        System.out.println("Prompt enviado: " + prompt);
+        log.info("Enviando prompt: {}", prompt);
 
         Map<String, Object> body = Map.of(
-                "contents", List.of(
-                        Map.of(
-                                "role", "user",
-                                "parts", List.of(Map.of("text", prompt))
-                        )
-                )
+                "contents", List.of(Map.of(
+                        "role", "user",
+                        "parts", List.of(Map.of("text", prompt))
+                ))
         );
 
         try {
@@ -125,32 +207,25 @@ public class GeminiService {
             return extrairTexto(raw);
 
         } catch (RestClientException e) {
-            System.err.println("Erro ao chamar Gemini: " + e.getMessage());
-            return "Erro: Não foi possível gerar o conteúdo. Verifique sua conexão ou a API do Gemini.";
+            log.error("Erro ao chamar Gemini", e);
+            throw new RuntimeException("Falha ao gerar conteúdo", e);
         }
     }
 
     private String extrairTexto(String raw) {
         try {
             JsonNode root = objectMapper.readTree(raw);
-
             if (root.has("error")) {
                 String msg = root.path("error").path("message").asText("Erro desconhecido da API.");
-                return "Erro da API Gemini: " + msg;
+                throw new RuntimeException("Erro da API Gemini: " + msg);
             }
-
             return root.path("candidates")
-                    .path(0)
-                    .path("content")
-                    .path("parts")
-                    .path(0)
-                    .path("text")
-                    .asText("Erro: resposta inesperada do Gemini.");
+                    .path(0).path("content")
+                    .path("parts").path(0)
+                    .path("text").asText("Resposta inesperada da API.");
         } catch (Exception e) {
-            System.err.println("Erro ao processar resposta do Gemini: " + e.getMessage());
-            return "Erro ao processar a resposta da API.";
+            log.error("Erro ao processar resposta bruta do Gemini", e);
+            throw new RuntimeException("Erro ao processar resposta da API", e);
         }
     }
-
-    
 }

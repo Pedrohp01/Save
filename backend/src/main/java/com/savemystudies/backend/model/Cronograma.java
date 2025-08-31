@@ -1,8 +1,12 @@
 package com.savemystudies.backend.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,14 +21,29 @@ public class Cronograma {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String vestibularOuCurso; // ENEM, FUVEST, Java, etc.
-
-    private int vezesPorSemana;
-    private double horasPorDia;
+    private String nome;
 
     @ManyToOne
-    private Usuario usuario;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User usuario;
 
+    @ElementCollection
+    @Enumerated(EnumType.STRING)
+    private List<String> diasDaSemana = new ArrayList<>();
+
+    private int minutospordia;  // minutos por dia de estudo
+    private String vestibular;
+    private LocalDate dataInicio;
+    private LocalDate dataFim;
+
+    public Cronograma(String vestibular, ArrayList<String> diasDaSemana, double horasPorDia) {
+        this.vestibular = vestibular;
+        this.diasDaSemana = diasDaSemana;
+        this.minutospordia = (int) (horasPorDia * 60);
+    }
     @OneToMany(mappedBy = "cronograma", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<CronogramaSemana> semanas = new ArrayList<>();
+    private List<CronogramaDia> dias = new ArrayList<>();
+
+    @Lob // pode ser grande, então usamos LOB
+    private String textoGerado;
 }

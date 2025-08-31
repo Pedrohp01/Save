@@ -1,27 +1,33 @@
 package com.savemystudies.backend.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDate;
 
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class CronogramaDia {
+    public class CronogramaDia {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        private Long id;
 
-    private String diaDaSemana; // Segunda, Terça, etc.
+        @ManyToOne
+        @JoinColumn(name = "cronograma_id", nullable = false)
+        private Cronograma cronograma;
 
-    @ManyToOne
-    private CronogramaSemana semana;
+        private LocalDate data;
 
-    @OneToMany(mappedBy = "dia", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<CronogramaAtividade> atividades = new ArrayList<>();
-}
+        private String descricao;
+
+        private boolean concluido = false;
+    }
+
+

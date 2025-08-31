@@ -1,34 +1,52 @@
 package com.savemystudies.backend.service;
 
-import com.savemystudies.backend.model.*;
-import com.savemystudies.backend.repository.*;
+import com.savemystudies.backend.model.Cronograma;
+import com.savemystudies.backend.repository.CronogramaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 import java.util.Optional;
 
 @Service
 public class CronogramaService {
 
     private final CronogramaRepository cronogramaRepository;
-    private final CronogramaAtividadeRepository atividadeRepository;
 
-    public CronogramaService(CronogramaRepository cronogramaRepository,
-                             CronogramaAtividadeRepository atividadeRepository) {
+    @Autowired
+    public CronogramaService(CronogramaRepository cronogramaRepository) {
         this.cronogramaRepository = cronogramaRepository;
-        this.atividadeRepository = atividadeRepository;
     }
 
-    public Cronograma salvar(Cronograma cronograma) {
-        return cronogramaRepository.save(cronograma);
+    public List<Cronograma> buscarTodos() {
+        return cronogramaRepository.findAll();
     }
 
-    public Optional<Cronograma> buscarPorId(Long id) {
-        return cronogramaRepository.findById(id);
+    public Cronograma buscarPorId(Long id) {
+        return cronogramaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cronograma não encontrado com o ID: " + id));
     }
 
-    public void concluirAtividade(Long atividadeId) {
-        atividadeRepository.findById(atividadeId).ifPresent(atividade -> {
-            atividade.setConcluida(true);
-            atividadeRepository.save(atividade);
-        });
+    public Cronograma editar(Long id, Cronograma cronogramaAtualizado) {
+        // Encontra o cronograma existente
+        return cronogramaRepository.findById(id)
+                .map(cronogramaExistente -> {
+                    // Atualiza os campos necessários
+                    cronogramaExistente.setVestibular(cronogramaAtualizado.getVestibular());
+                    cronogramaExistente.setDiasDaSemana(cronogramaAtualizado.getDiasDaSemana());
+                    cronogramaExistente.setMinutospordia(cronogramaAtualizado.getMinutospordia());
+                    cronogramaExistente.setDataInicio(cronogramaAtualizado.getDataInicio());
+                    cronogramaExistente.setDataFim(cronogramaAtualizado.getDataFim());
+                    // Salva e retorna o cronograma editado
+                    return cronogramaRepository.save(cronogramaExistente);
+                })
+                .orElseThrow(() -> new RuntimeException("Cronograma não encontrado com o ID: " + id));
+    }
+
+    public void deletar(Long id) {
+        if (!cronogramaRepository.existsById(id)) {
+            throw new RuntimeException("Cronograma não encontrado com o ID: " + id);
+        }
+        cronogramaRepository.deleteById(id);
     }
 }

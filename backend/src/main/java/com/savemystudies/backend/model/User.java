@@ -35,8 +35,8 @@ public class User{
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
     private List<ResumoGerado> resumos;
 
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
-    private List<ExercicioGerado> exercicios;
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Exercicio> exercicios;
 
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
     private List<ProgressoEstudo> progresso;
