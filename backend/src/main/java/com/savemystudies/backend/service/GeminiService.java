@@ -30,9 +30,9 @@ public class GeminiService {
 
     public GeminiService(
             ObjectMapper objectMapper,
-            @Value("${gemini.api.base-url:https://generativelanguage.googleapis.com/v1beta}") String baseUrl,
+            @Value("${gemini.api.base-url}") String baseUrl,
+            @Value("${gemini.api.model}") String model,
             @Value("${gemini.api.key}") String apiKey,
-            @Value("${gemini.api.model:gemini-1.5-flash}") String model,
             CronogramaRepository cronogramaRepository,
             CronogramaDiaRepository cronogramaDiaRepository
     ) {
@@ -43,7 +43,6 @@ public class GeminiService {
         this.cronogramaRepository = cronogramaRepository;
         this.cronogramaDiaRepository = cronogramaDiaRepository;
     }
-
     // ---------- gerar exercícios ----------
     private static final String EXERCICIO_PROMPT = """
 Gere exatamente 5 questões de múltipla escolha no nível ENEM
@@ -74,12 +73,10 @@ Tópico: %s
 Subtópico: %s
 """;
 
-
     public String gerarExercicio(String area, String materia, String topico, String subtopico) {
         String prompt = String.format(EXERCICIO_PROMPT, area, materia, topico, subtopico);
         return gerarResposta(prompt);
     }
-
 
     // ---------- gerar resumos ----------
     public String gerarResumo(String area, String materia, String topico, String subtopico) {
@@ -144,25 +141,24 @@ Subtópico: %s
 
             Texto: "%s"
 
-                "Retorne JSON: {\\"feedback\\": \\"...\\", \\"nota\\": 0.0}"
+            Retorne JSON: {"feedback": "...", "nota": 0.0}
             """, tema, vestibular, texto);
 
         try {
             String respostaBruta = gerarResposta(prompt);
-            // Remove markdown tags from the response
-            String jsonPuro = respostaBruta.replaceAll("```json", "").replaceAll("```", "").trim();
-
-            // Add a log to see the clean JSON string
-            System.out.println("JSON limpo para parsing: " + jsonPuro);
+            String jsonPuro = respostaBruta
+                    .replaceAll("```json", "")
+                    .replaceAll("```", "")
+                    .trim();
 
             return objectMapper.readValue(jsonPuro, RedacaoFeedback.class);
 
         } catch (Exception e) {
             log.error("Erro ao processar redação", e);
-            // This is where the null and 0.0 values are coming from
-            return new RedacaoFeedback(null, 0.0);
+            return new RedacaoFeedback("Erro ao analisar a redação", 0.0);
         }
     }
+
     public List<String> gerarTemasRedacao() {
         String prompt = """
                 Gere 1 tema de redação no modelo ENEM, sobre atualidades.
@@ -170,7 +166,8 @@ Subtópico: %s
                 """;
 
         try {
-            JsonNode root = objectMapper.readTree(gerarResposta(prompt));
+            String resposta = gerarResposta(prompt);
+            JsonNode root = objectMapper.readTree(resposta);
             JsonNode temasNode = root.path("temas");
 
             if (temasNode.isArray()) {
@@ -203,6 +200,7 @@ Subtópico: %s
                     .body(body)
                     .retrieve()
                     .body(String.class);
+
 
             return extrairTexto(raw);
 

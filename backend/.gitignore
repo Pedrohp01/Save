@@ -26,7 +26,17 @@
 ### Arquivos gerados automaticamente ###
 # Logs
 *.log
-# Arquivos de configurações de ambiente
-# (Exemplo: para não versionar dados sensíveis)
-!application.properties.example
+
+### Arquivos de configurações de ambiente ###
+# Ignora arquivos reais de configuração
 application.properties
+application.yml
+
+# Permite arquivos de exemplo (para versionar)
+!application.properties.example
+!application.yml.example
+
+### Outros ###
+# Arquivos temporários do sistema operacional
+.DS_Store
+Thumbs.db
