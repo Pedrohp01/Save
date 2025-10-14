@@ -27,10 +27,8 @@
 # Logs
 *.log
 
-### Arquivos de configurações de ambiente ###
-# Ignora arquivos reais de configuração
-application.properties
-application.yml
+src/main/resources/application*.properties
+*.db
 
 # Permite arquivos de exemplo (para versionar)
 !application.properties.example
