@@ -36,13 +36,19 @@ public class GeminiService {
             CronogramaRepository cronogramaRepository,
             CronogramaDiaRepository cronogramaDiaRepository
     ) {
-        this.rest = RestClient.builder().baseUrl(baseUrl).build();
+        this.rest = RestClient.builder()
+                .baseUrl(baseUrl)
+                .defaultHeader("Content-Type", "application/json")
+                .defaultHeader("Accept", "application/json")
+                .build();
+
         this.objectMapper = objectMapper;
         this.apiKey = apiKey;
         this.model = model;
         this.cronogramaRepository = cronogramaRepository;
         this.cronogramaDiaRepository = cronogramaDiaRepository;
     }
+
     // ---------- gerar exercícios ----------
     private static final String EXERCICIO_PROMPT = """
 Gere exatamente 5 questões de múltipla escolha no nível ENEM
@@ -181,7 +187,7 @@ Subtópico: %s
         return Collections.emptyList();
     }
 
-    // ---------- infraestrutura ----------
+    // ---------- integração com a API Gemini ----------
     private String gerarResposta(String prompt) {
         log.info("Enviando prompt: {}", prompt);
 
@@ -194,14 +200,15 @@ Subtópico: %s
 
         try {
             String raw = rest.post()
-                    .uri("/models/{model}:generateContent?key={key}", model, apiKey)
+                    // ✅ Corrigido: Gemini usa query param `?key=` (não Authorization)
+                    .uri("/models/" + model + ":generateContent?key=" + apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
                     .body(String.class);
 
-
+            log.info("Resposta bruta da API Gemini: {}", raw);
             return extrairTexto(raw);
 
         } catch (RestClientException e) {

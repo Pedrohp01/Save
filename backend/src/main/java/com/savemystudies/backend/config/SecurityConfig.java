@@ -2,23 +2,28 @@ package com.savemystudies.backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .authorizeHttpRequests(authorize -> authorize
-                        .anyRequest().permitAll() // libera tudo
+                .csrf(csrf -> csrf.disable()) // Desativa CSRF para testes
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/api/**",        // libera acesso à sua API
+                                "/swagger-ui/**", // se estiver usando Swagger
+                                "/v3/api-docs/**"
+                        ).permitAll()
+                        .anyRequest().permitAll()
                 )
-                .csrf(AbstractHttpConfigurer::disable)
-                .httpBasic(httpBasic -> httpBasic.disable()); // desativa popup http basic
+                .httpBasic(Customizer.withDefaults())
+                .formLogin(form -> form.disable()); // Desativa a tela de login padrão
+
         return http.build();
     }
 }
