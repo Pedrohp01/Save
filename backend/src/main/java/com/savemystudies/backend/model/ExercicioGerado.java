@@ -1,31 +1,31 @@
 package com.savemystudies.backend.model;
+
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
-import java.util.*;;
+import java.util.List;
+
 @Entity
-@Table(name = "exercicio_gerado")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Getter
+@Setter
+@Table(name = "exercicios_gerados")
 public class ExercicioGerado {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User usuario;
+    // Assumindo que você já tem a entidade Subtopico
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subtopico_id", nullable = false)
+    private Subtopico subtopico;
 
-    @ManyToOne
-    @JoinColumn(name = "tema_id", nullable = false)
-    private Tema tema;
+    private LocalDateTime dataCriacao = LocalDateTime.now();
 
-    @Column(columnDefinition = "json")
-    private String conteudo;
+    @OneToMany(mappedBy = "exercicioGerado", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<QuestaoGerada> questoes;
 
-    private LocalDateTime dataGeracao = LocalDateTime.now();
+    @Column(columnDefinition = "TEXT")
+    private String promptUsado;
 }
-
