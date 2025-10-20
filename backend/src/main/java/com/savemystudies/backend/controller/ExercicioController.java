@@ -73,7 +73,7 @@ public class ExercicioController {
     // ===========================================
 
     // URL: /api/exercicios/gerar/{areaId}/{materiaId}/{topicoId}/{subtopicoId}
-    @PostMapping("/{areaId}/{materiaId}/{topicoId}/{subtopicoId}/gerar")
+    @GetMapping("/{areaId}/{materiaId}/{topicoId}/{subtopicoId}/gerar")
     public ResponseEntity<ExercicioResponse> gerarExercicio(
             @PathVariable Long areaId,
             @PathVariable Long materiaId,
