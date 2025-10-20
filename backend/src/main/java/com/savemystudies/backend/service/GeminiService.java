@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.savemystudies.backend.dto.RedacaoFeedback;
 import com.savemystudies.backend.dto.ExercicioResponse;
 import com.savemystudies.backend.dto.Questao;
+import com.savemystudies.backend.dto.ResumoResponse;
 import com.savemystudies.backend.model.Cronograma;
 import com.savemystudies.backend.model.CronogramaDia;
 import com.savemystudies.backend.model.ExercicioGerado;
@@ -186,17 +187,21 @@ Subtópico: %s
     }
 
     // ---------- gerar resumos (inalterado) ----------
-    public String gerarResumo(String area, String materia, String topico, String subtopico) {
+    public ResumoResponse gerarResumo(String area, String materia, String topico, String subtopico) {
         String prompt = String.format("""
-                Crie um resumo claro e objetivo para vestibulandos sobre o subtema '%s'.
-                O resumo deve estar dentro do contexto de '%s', na matéria '%s', área '%s'.
+            Crie um resumo claro e objetivo para vestibulandos sobre o subtema '%s'.
+            O resumo deve estar dentro do contexto de '%s', na matéria '%s', área '%s'.
 
-                Organize o resumo com títulos bem definidos e finalize com:
-                "como tal assunto é cobrado nos vestibulares".
-                """, subtopico, topico, materia, area);
-        return gerarResposta(prompt);
+            Organize o resumo com títulos bem definidos e finalize com:
+            "como tal assunto é cobrado nos vestibulares".
+            """, subtopico, topico, materia, area);
+
+        // 1. Obtém o texto puro
+        String textoResumo = gerarResposta(prompt); // Assume que gerarResposta retorna String
+
+        // 2. CORREÇÃO: Encapsula o texto e o subtopico no DTO antes de retornar
+        return new ResumoResponse(subtopico, textoResumo);
     }
-
     // ---------- gerar cronograma (inalterado) ----------
     public Cronograma gerarCronograma(Cronograma cronograma) {
         double horasPorDia = cronograma.getMinutospordia() / 60.0;
